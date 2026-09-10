@@ -1,6 +1,10 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 
 function Sidebar() {
+  const navigate = useNavigate();
+
+  const username = localStorage.getItem("username") || "User";
+
   const navItemClass = ({ isActive }) =>
     `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all
     ${
@@ -8,6 +12,14 @@ function Sidebar() {
         ? "bg-slate-800 text-white"
         : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
     }`;
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("username");
+    localStorage.removeItem("role");
+
+    navigate("/login");
+  };
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-slate-950 border-r border-slate-800 flex flex-col">
@@ -82,13 +94,41 @@ function Sidebar() {
       </nav>
 
       {/* Bottom */}
-      <div className="border-t border-slate-800 p-4">
+      <div className="border-t border-slate-800 p-4 space-y-3">
 
+        {/* User */}
+        <div className="flex items-center gap-3 px-3 py-2">
+
+          <div className="w-9 h-9 rounded-full bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center">
+            👤
+          </div>
+
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-white truncate">
+              {username}
+            </p>
+
+            <p className="text-[10px] text-slate-500 uppercase">
+              {localStorage.getItem("role") || "USER"}
+            </p>
+          </div>
+
+        </div>
+
+        {/* Settings */}
         <NavLink to="/settings" className={navItemClass}>
           <span>⚙️</span>
           <span>Settings</span>
         </NavLink>
 
+        {/* Logout */}
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all"
+        >
+          <span>🚪</span>
+          <span>Logout</span>
+        </button>
 
       </div>
 
