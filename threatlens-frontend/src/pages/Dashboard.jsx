@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 
+
+
 import {
   getDashboardStats,
   getThreatActivity,
@@ -8,11 +10,14 @@ import {
 } from "../api/ThreatApi";
 
 import ThreatTypeChart from "../component/ThreatTypeChart";
-
 import ThreatActivityChart from "../component/dashboard/ThreatActivityChart";
 
-function Dashboard() {
+import {
+  connectWebSocket,
+  disconnectWebSocket,
+} from "../api/WebSocket";
 
+function Dashboard() {
   const [stats, setStats] = useState(null);
   const [threatActivity, setThreatActivity] = useState([]);
   const [threatTypes, setThreatTypes] = useState([]);
@@ -20,12 +25,12 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
+  // ==============================
+  // FETCH DASHBOARD DATA
+  // ==============================
 
   const fetchDashboardData = async () => {
-
     try {
-
       const [
         statsData,
         activityData,
@@ -41,166 +46,187 @@ function Dashboard() {
       // Stats
       setStats(statsData);
 
-
       // Threat Activity
-      const formattedActivity = activityData.map((item) => ({
-        time: item[0],
-        threats: Number(item[1]),
-      }));
+      const formattedActivity = Array.isArray(activityData)
+        ? activityData.map((item) => ({
+            time: item[0],
+            threats: Number(item[1]),
+          }))
+        : [];
 
       setThreatActivity(formattedActivity);
 
-
       // Threat Types
-      const formattedThreatTypes = threatTypeData.map((item) => ({
-        threatType: item[0],
-        count: Number(item[1]),
-      }));
+      const formattedThreatTypes = Array.isArray(threatTypeData)
+        ? threatTypeData.map((item) => ({
+            threatType: item[0],
+            count: Number(item[1]),
+          }))
+        : [];
 
       setThreatTypes(formattedThreatTypes);
 
-
       // Recent Threats
-      setRecentThreats(recentThreatData);
+      setRecentThreats(
+        Array.isArray(recentThreatData)
+          ? recentThreatData
+          : []
+      );
 
       setError("");
-
     } catch (err) {
-
       console.error("Dashboard error:", err);
-
       setError("Unable to load dashboard data");
-
     } finally {
-
       setLoading(false);
-
     }
-
   };
 
+  // ==============================
+  // INITIAL LOAD + POLLING
+  // ==============================
 
-  // Initial load
-  fetchDashboardData();
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchDashboardData();
+    }, 0);
+
+    const interval = setInterval(() => {
+      fetchDashboardData();
+    }, 5000);
+
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
+  }, []);
 
 
-  // Refresh every 5 seconds
-  const interval = setInterval(() => {
-    fetchDashboardData();
-  }, 5000);
+  // ==============================
+  // REAL-TIME WEBSOCKET
+  // ==============================
 
+  useEffect(() => {
+    connectWebSocket(
+      null,
+      async (newThreat) => {
+        console.log(
+          "🚨 DASHBOARD: New threat received",
+          newThreat
+        );
 
-  // Cleanup
-  return () => {
-    clearInterval(interval);
-  };
+        // Immediately refresh dashboard
+        await fetchDashboardData();
+      }
+    );
 
-}, []);
+    return () => {
+      disconnectWebSocket();
+    };
+  }, []);
 
+  // ==============================
+  // FORMAT THREAT TYPE
+  // ==============================
 
   function formatThreatType(type) {
+    if (!type) {
+      return "Unknown";
+    }
 
-  if (!type) {
-    return "Unknown";
+    return type
+      .toLowerCase()
+      .split("_")
+      .map(
+        (word) =>
+          word.charAt(0).toUpperCase() +
+          word.slice(1)
+      )
+      .join(" ");
   }
 
-  return type
-    .toLowerCase()
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
+  // ==============================
+  // FORMAT TIME
+  // ==============================
 
+  function formatDetectedTime(timestamp) {
+    if (!timestamp) {
+      return "Unknown";
+    }
 
-function formatDetectedTime(timestamp) {
+    const date = new Date(timestamp);
 
-  if (!timestamp) {
-    return "Unknown";
+    if (Number.isNaN(date.getTime())) {
+      return "Unknown";
+    }
+
+    return date.toLocaleString([], {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   }
 
-  const date = new Date(timestamp);
-
-  return date.toLocaleString([], {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-  /* ---------------- LOADING ---------------- */
+  // ==============================
+  // LOADING
+  // ==============================
 
   if (loading) {
-
     return (
       <div className="min-h-screen bg-gray-950 p-6 text-white">
         Loading dashboard...
       </div>
     );
-
   }
 
+  // ==============================
+  // ERROR
+  // ==============================
 
-  /* ---------------- ERROR ---------------- */
-
-  if (error) {
-
+  if (error || !stats) {
     return (
       <div className="min-h-screen bg-gray-950 p-6 text-red-400">
-        {error}
+        {error || "Unable to load dashboard"}
       </div>
     );
-
   }
 
-
-  /* ---------------- DASHBOARD ---------------- */
+  // ==============================
+  // DASHBOARD
+  // ==============================
 
   return (
-
     <div className="min-h-screen bg-gray-950 p-6 text-white">
 
       {/* HEADER */}
 
       <div className="mb-8 flex items-center justify-between">
-
         <div>
-
           <div className="flex items-center gap-3">
-
             <h1 className="text-3xl font-bold">
               Security Dashboard
             </h1>
 
             <span className="flex items-center gap-2 rounded-full border border-green-500/20 bg-green-500/10 px-3 py-1 text-xs text-green-400">
-
               <span className="h-2 w-2 animate-pulse rounded-full bg-green-400" />
-
               LIVE
-
             </span>
-
           </div>
 
           <p className="mt-2 text-gray-400">
             Real-time overview of ThreatLens security activity
           </p>
-
         </div>
 
-
         <div className="text-right text-sm text-gray-500">
-
           Monitoring System
 
           <div className="text-green-400">
             ● Operational
           </div>
-
         </div>
-
       </div>
-
 
       {/* STAT CARDS */}
 
@@ -244,65 +270,21 @@ function formatDetectedTime(timestamp) {
 
       </div>
 
-
       {/* THREAT ACTIVITY */}
 
-      <ThreatActivityChart data={threatActivity} />
-
+      <ThreatActivityChart
+        data={threatActivity}
+      />
 
       {/* LOWER DASHBOARD */}
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-
-  <div className="rounded-xl border border-gray-800 bg-gray-900 p-6">
-
-    <div className="mb-6">
-
-      <h2 className="text-lg font-semibold">
-        Threat Severity
-      </h2>
-
-      <p className="mt-1 text-sm text-gray-500">
-        Distribution of detected threats by severity
-      </p>
-
-    </div>
-
-    <div className="space-y-5">
-
-      <SeverityBar
-        label="Critical"
-        value={stats.criticalThreats}
-        total={stats.totalThreats}
-      />
-
-      <SeverityBar
-        label="High"
-        value={stats.highThreats}
-        total={stats.totalThreats}
-      />
-
-      <SeverityBar
-        label="Medium"
-        value={stats.mediumThreats}
-        total={stats.totalThreats}
-      />
-
-    </div>
-
-  </div>
-
-
-  <ThreatTypeChart data={threatTypes} />
-
-
 
         {/* THREAT SEVERITY */}
 
         <div className="rounded-xl border border-gray-800 bg-gray-900 p-6">
 
           <div className="mb-6">
-
             <h2 className="text-lg font-semibold">
               Threat Severity
             </h2>
@@ -310,9 +292,7 @@ function formatDetectedTime(timestamp) {
             <p className="mt-1 text-sm text-gray-500">
               Distribution of detected threats by severity
             </p>
-
           </div>
-
 
           <div className="space-y-5">
 
@@ -338,13 +318,17 @@ function formatDetectedTime(timestamp) {
 
         </div>
 
+        {/* THREAT TYPE */}
+
+        <ThreatTypeChart
+          data={threatTypes}
+        />
 
         {/* SECURITY OVERVIEW */}
 
         <div className="rounded-xl border border-gray-800 bg-gray-900 p-6">
 
           <div className="mb-6">
-
             <h2 className="text-lg font-semibold">
               Security Overview
             </h2>
@@ -352,9 +336,7 @@ function formatDetectedTime(timestamp) {
             <p className="mt-1 text-sm text-gray-500">
               Current ThreatLens monitoring status
             </p>
-
           </div>
-
 
           <div className="space-y-4">
 
@@ -384,13 +366,11 @@ function formatDetectedTime(timestamp) {
 
       </div>
 
-
       {/* RECENT ACTIVITY */}
 
       <div className="mt-6 rounded-xl border border-gray-800 bg-gray-900 p-6">
 
         <div className="mb-5">
-
           <h2 className="text-lg font-semibold">
             Recent Security Activity
           </h2>
@@ -398,148 +378,127 @@ function formatDetectedTime(timestamp) {
           <p className="mt-1 text-sm text-gray-500">
             Latest events detected by ThreatLens
           </p>
-
         </div>
 
-<div className="overflow-x-auto">
+        <div className="overflow-x-auto">
 
-  {recentThreats.length === 0 ? (
+          {recentThreats.length === 0 ? (
+            <div className="py-10 text-center text-gray-500">
+              No recent threats detected
+            </div>
+          ) : (
 
-    <div className="py-10 text-center text-gray-500">
-      No recent threats detected
-    </div>
+            <table className="w-full text-left">
 
-  ) : (
+              <thead>
+                <tr className="border-b border-gray-800 text-xs uppercase text-gray-500">
 
-    <table className="w-full text-left">
+                  <th className="px-4 py-3">
+                    Threat
+                  </th>
 
-      <thead>
+                  <th className="px-4 py-3">
+                    Severity
+                  </th>
 
-        <tr className="border-b border-gray-800 text-xs uppercase text-gray-500">
+                  <th className="px-4 py-3">
+                    Source IP
+                  </th>
 
-          <th className="px-4 py-3">
-            Threat
-          </th>
+                  <th className="px-4 py-3">
+                    User
+                  </th>
 
-          <th className="px-4 py-3">
-            Severity
-          </th>
+                  <th className="px-4 py-3">
+                    Status
+                  </th>
 
-          <th className="px-4 py-3">
-            Source IP
-          </th>
+                  <th className="px-4 py-3">
+                    Detected
+                  </th>
 
-          <th className="px-4 py-3">
-            User
-          </th>
+                </tr>
+              </thead>
 
-          <th className="px-4 py-3">
-            Status
-          </th>
+              <tbody>
 
-          <th className="px-4 py-3">
-            Detected
-          </th>
+                {recentThreats.map((threat) => (
 
-        </tr>
+                  <tr
+                    key={threat.id}
+                    className="border-b border-gray-800/50 transition hover:bg-gray-800/40"
+                  >
 
-      </thead>
+                    {/* THREAT */}
 
+                    <td className="px-4 py-4">
+                      <span className="font-medium text-white">
+                        {formatThreatType(
+                          threat.threatType
+                        )}
+                      </span>
+                    </td>
 
-      <tbody>
+                    {/* SEVERITY */}
 
-        {recentThreats.map((threat) => (
+                    <td className="px-4 py-4">
+                      <SeverityBadge
+                        severity={threat.severity}
+                      />
+                    </td>
 
-          <tr
-            key={threat.id}
-            className="border-b border-gray-800/50 transition hover:bg-gray-800/40"
-          >
+                    {/* SOURCE IP */}
 
-            {/* THREAT TYPE */}
+                    <td className="px-4 py-4 font-mono text-sm text-gray-400">
+                      {threat.sourceIp || "Unknown"}
+                    </td>
 
-            <td className="px-4 py-4">
+                    {/* USER */}
 
-              <span className="font-medium text-white">
-                {formatThreatType(threat.threatType)}
-              </span>
+                    <td className="px-4 py-4 text-sm text-gray-400">
+                      {threat.username || "Unknown"}
+                    </td>
 
-            </td>
+                    {/* STATUS */}
 
+                    <td className="px-4 py-4">
+                      <StatusBadge
+                        status={threat.status}
+                      />
+                    </td>
 
-            {/* SEVERITY */}
+                    {/* TIME */}
 
-            <td className="px-4 py-4">
+                    <td className="px-4 py-4 text-sm text-gray-500">
+                      {formatDetectedTime(
+                        threat.detectedAt
+                      )}
+                    </td>
 
-              <SeverityBadge
-                severity={threat.severity}
-              />
+                  </tr>
 
-            </td>
+                ))}
 
+              </tbody>
 
-            {/* SOURCE IP */}
+            </table>
 
-            <td className="px-4 py-4 font-mono text-sm text-gray-400">
+          )}
 
-              {threat.sourceIp || "Unknown"}
-
-            </td>
-
-
-            {/* USER */}
-
-            <td className="px-4 py-4 text-sm text-gray-400">
-
-              {threat.username || "Unknown"}
-
-            </td>
-
-
-            {/* STATUS */}
-
-            <td className="px-4 py-4">
-
-              <StatusBadge
-                status={threat.status}
-              />
-
-            </td>
-
-
-            {/* TIME */}
-
-            <td className="px-4 py-4 text-sm text-gray-500">
-
-              {formatDetectedTime(threat.detectedAt)}
-
-            </td>
-
-          </tr>
-
-        ))}
-
-      </tbody>
-
-    </table>
-
-  )}
-
-</div>
+        </div>
 
       </div>
 
     </div>
-
-  )
+  );
 }
 
-
-/* ---------------- STAT CARD ---------------- */
+/* ==============================
+   STAT CARD
+================================ */
 
 function StatCard({ title, value, icon }) {
-
   return (
-
     <div className="rounded-xl border border-gray-800 bg-gray-900 p-5 transition hover:border-gray-700">
 
       <div className="flex items-center justify-between">
@@ -555,26 +514,24 @@ function StatCard({ title, value, icon }) {
       </div>
 
       <p className="mt-3 text-3xl font-bold">
-        {value}
+        {value ?? 0}
       </p>
 
     </div>
-
   );
 }
 
-
-/* ---------------- SEVERITY BAR ---------------- */
+/* ==============================
+   SEVERITY BAR
+================================ */
 
 function SeverityBar({ label, value, total }) {
-
   const percentage =
     total > 0
       ? Math.round((value / total) * 100)
       : 0;
 
   return (
-
     <div>
 
       <div className="mb-2 flex justify-between text-sm">
@@ -584,38 +541,36 @@ function SeverityBar({ label, value, total }) {
         </span>
 
         <span className="font-medium text-white">
-          {value}
+          {value ?? 0}
         </span>
 
       </div>
-
 
       <div className="h-2 overflow-hidden rounded-full bg-gray-800">
 
         <div
           className="h-full rounded-full bg-red-500 transition-all duration-500"
-          style={{ width: `${percentage}%` }}
+          style={{
+            width: `${percentage}%`,
+          }}
         />
 
       </div>
-
 
       <p className="mt-1 text-right text-xs text-gray-600">
         {percentage}%
       </p>
 
     </div>
-
   );
 }
 
-
-/* ---------------- OVERVIEW ROW ---------------- */
+/* ==============================
+   OVERVIEW ROW
+================================ */
 
 function OverviewRow({ label, value }) {
-
   return (
-
     <div className="flex items-center justify-between rounded-lg border border-gray-800 bg-gray-950 px-4 py-3">
 
       <span className="text-sm text-gray-400">
@@ -623,22 +578,30 @@ function OverviewRow({ label, value }) {
       </span>
 
       <span className="font-semibold text-white">
-        {value}
+        {value ?? 0}
       </span>
 
     </div>
-
   );
-
 }
 
-function SeverityBadge({ severity }) {
+/* ==============================
+   SEVERITY BADGE
+================================ */
 
+function SeverityBadge({ severity }) {
   const styles = {
-    CRITICAL: "bg-red-500/10 text-red-400 border-red-500/20",
-    HIGH: "bg-orange-500/10 text-orange-400 border-orange-500/20",
-    MEDIUM: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
-    LOW: "bg-green-500/10 text-green-400 border-green-500/20",
+    CRITICAL:
+      "bg-red-500/10 text-red-400 border-red-500/20",
+
+    HIGH:
+      "bg-orange-500/10 text-orange-400 border-orange-500/20",
+
+    MEDIUM:
+      "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
+
+    LOW:
+      "bg-green-500/10 text-green-400 border-green-500/20",
   };
 
   return (
@@ -648,18 +611,28 @@ function SeverityBadge({ severity }) {
         "bg-gray-500/10 text-gray-400 border-gray-500/20"
       }`}
     >
-      {severity}
+      {severity || "UNKNOWN"}
     </span>
   );
 }
 
-function StatusBadge({ status }) {
+/* ==============================
+   STATUS BADGE
+================================ */
 
+function StatusBadge({ status }) {
   const styles = {
-    OPEN: "bg-red-500/10 text-red-400 border-red-500/20",
-    INVESTIGATING: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
-    BLOCKED: "bg-purple-500/10 text-purple-400 border-purple-500/20",
-    RESOLVED: "bg-green-500/10 text-green-400 border-green-500/20",
+    OPEN:
+      "bg-red-500/10 text-red-400 border-red-500/20",
+
+    INVESTIGATING:
+      "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
+
+    BLOCKED:
+      "bg-purple-500/10 text-purple-400 border-purple-500/20",
+
+    RESOLVED:
+      "bg-green-500/10 text-green-400 border-green-500/20",
   };
 
   return (
@@ -669,7 +642,7 @@ function StatusBadge({ status }) {
         "bg-gray-500/10 text-gray-400 border-gray-500/20"
       }`}
     >
-      {status}
+      {status || "UNKNOWN"}
     </span>
   );
 }

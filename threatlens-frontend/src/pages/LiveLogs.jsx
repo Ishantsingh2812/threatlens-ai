@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
 import { getLogs } from "../api/ThreatApi";
+import {
+  connectWebSocket,
+  disconnectWebSocket,
+} from "../api/WebSocket";
 
 function LiveLogs() {
 
@@ -28,20 +32,57 @@ const fetchLogs = async () => {
 };
 
 useEffect(() => {
+  let cancelled = false;
 
-  const timer = setTimeout(() => {
-    fetchLogs();
-  }, 0);
+  const loadLogs = async () => {
+    try {
+      const data = await getLogs();
 
-  const interval = setInterval(() => {
-    fetchLogs();
-  }, 5000);
-
-  return () => {
-    clearTimeout(timer);
-    clearInterval(interval);
+      if (!cancelled) {
+        setLogs(Array.isArray(data) ? data : []);
+        setError("");
+      }
+    } catch (err) {
+      if (!cancelled) {
+        console.error("Failed to fetch logs:", err);
+        setError("Unable to load logs");
+      }
+    } finally {
+      if (!cancelled) {
+        setLoading(false);
+      }
+    }
   };
 
+  loadLogs();
+
+  const interval = setInterval(loadLogs, 5000);
+
+  return () => {
+    cancelled = true;
+    clearInterval(interval);
+  };
+}, []);
+
+useEffect(() => {
+  connectWebSocket(
+    // New log
+    (newLog) => {
+      setLogs((currentLogs) => [
+        newLog,
+        ...currentLogs,
+      ]);
+    },
+
+    // New threat
+    (newThreat) => {
+      console.log("🚨 NEW THREAT DETECTED:", newThreat);
+    }
+  );
+
+  return () => {
+    disconnectWebSocket();
+  };
 }, []);
 
   const filteredLogs = logs.filter((log) => {
@@ -177,7 +218,7 @@ useEffect(() => {
 
         <div className="overflow-x-auto">
 
-          <table className="w-full min-w-[1000px]">
+          <table className="w-full min-w-[1000]">
 
             <thead className="border-b border-gray-800 bg-gray-950">
 

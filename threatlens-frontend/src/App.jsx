@@ -8,23 +8,20 @@ import LiveLogs from "./pages/LiveLogs";
 
 import Threats from "./pages/Threats";
 
+import ThreatDetails from "./pages/ThreatDetails";
 
+import Analytics from "./pages/Analytics";
 
-function Analyzer() {
-  return <h1>Analyzer</h1>;
-}
+import Analyzer from "./pages/Analyzer";
 
-function Analytics() {
-  return <h1>Analytics</h1>;
-}
+import Copilot from "./pages/Copilot";
 
-function Copilot() {
-  return <h1>AI Copilot</h1>;
-}
+import Reports from "./pages/Reports";
 
-function Reports() {
-  return <h1>Reports</h1>;
-}
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+
+import ProtectedRoute from "./component/ProtectedRoute";
 
 function Settings() {
   return <h1>Settings</h1>;
@@ -33,77 +30,101 @@ function Settings() {
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+<Route path="/login" element={<Login />} />
 
-      <Route
-        path="/dashboard"
-        element={
-          <DashboardLayout>
-            <Dashboard />
-          </DashboardLayout>
-        }
-      />
+<Route path="/register" element={<Register />} />
+
+<Route
+  path="/"
+  element={<Navigate to="/login" replace />}
+/>
+<Route
+  path="/dashboard"
+  element={
+    <ProtectedRoute>
+      <DashboardLayout>
+        <Dashboard />
+      </DashboardLayout>
+    </ProtectedRoute>
+  }
+/>
 
       <Route
         path="/logs"
         element={
+          <ProtectedRoute>
           <DashboardLayout>
             <LiveLogs />
           </DashboardLayout>
+          </ProtectedRoute>
         }
       />
 
       <Route
         path="/threats"
         element={
+          <ProtectedRoute>
           <DashboardLayout>
             <Threats />
           </DashboardLayout>
+          </ProtectedRoute>
         }
       />
 
-      <Route
-        path="/analyzer"
-        element={
-          <DashboardLayout>
-            <Analyzer />
-          </DashboardLayout>
-        }
-      />
+      <Route path="/threats/:id" element={<ThreatDetails />} />
+
+<Route
+  path="/analyzer"
+  element={
+    <ProtectedRoute>
+    <DashboardLayout>
+      <Analyzer />
+    </DashboardLayout>
+    </ProtectedRoute>
+  }
+/>
 
       <Route
         path="/analytics"
         element={
+          <ProtectedRoute>
           <DashboardLayout>
             <Analytics />
           </DashboardLayout>
+          </ProtectedRoute>
         }
       />
 
       <Route
         path="/copilot"
         element={
+          <ProtectedRoute>
           <DashboardLayout>
             <Copilot />
           </DashboardLayout>
+          </ProtectedRoute>
         }
       />
 
       <Route
         path="/reports"
         element={
+          <ProtectedRoute>
           <DashboardLayout>
             <Reports />
           </DashboardLayout>
+          </ProtectedRoute>
         }
       />
 
       <Route
         path="/settings"
         element={
+          <ProtectedRoute>
           <DashboardLayout>
             <Settings />
           </DashboardLayout>
+          </ProtectedRoute>
         }
       />
     </Routes>
