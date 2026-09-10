@@ -46,4 +46,12 @@ public interface ThreatRepository extends JpaRepository<Threat, Long> {
     List<Object[]> getThreatTypeDistribution();
 
     List<Threat> findTop10ByOrderByDetectedAtDesc();
+
+    @Query("""
+    SELECT t.sourceIp, COUNT(t)
+    FROM Threat t
+    GROUP BY t.sourceIp
+    ORDER BY COUNT(t) DESC
+    """)
+    List<Object[]> getTopAttackingIps();
 }

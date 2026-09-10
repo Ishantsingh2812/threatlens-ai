@@ -13,29 +13,39 @@ public class DetectionService {
 
     private final List<ThreatRule> rules;
     private final ThreatRepository threatRepository;
+    private final WebSocketService webSocketService;
 
     public DetectionService(
             List<ThreatRule> rules,
-            ThreatRepository threatRepository
+            ThreatRepository threatRepository,
+            WebSocketService webSocketService
     ) {
         this.rules = rules;
         this.threatRepository = threatRepository;
+        this.webSocketService = webSocketService;
     }
 
+
     public void analyze(Log log) {
+
+        System.out.println("🔍 Analyzing log: " + log.getId());
 
         for (ThreatRule rule : rules) {
 
             Threat threat = rule.detect(log);
 
             if (threat != null) {
-                threatRepository.save(threat);
+
+                Threat savedThreat = threatRepository.save(threat);
 
                 System.out.println(
                         "🚨 THREAT DETECTED: "
-                                + threat.getThreatType()
+                                + savedThreat.getThreatType()
                 );
+
+                webSocketService.sendThreat(savedThreat);
             }
         }
     }
 }
+

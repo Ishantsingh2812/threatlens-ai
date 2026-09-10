@@ -54,7 +54,7 @@ public class BruteForceRule implements ThreatRule {
                 logRepository
                         .findByIpAddressAndEndpointAndStatusCodeAndTimestampAfter(
                                 log.getIpAddress(),
-                                "/api/login",
+                                "/login",
                                 401,
                                 windowStart
                         );
@@ -84,7 +84,7 @@ public class BruteForceRule implements ThreatRule {
 
     private boolean isFailedLogin(Log log) {
 
-        return "/api/login".equals(log.getEndpoint())
+        return "/login".equals(log.getEndpoint())
                 && log.getStatusCode() != null
                 && log.getStatusCode() == 401;
     }

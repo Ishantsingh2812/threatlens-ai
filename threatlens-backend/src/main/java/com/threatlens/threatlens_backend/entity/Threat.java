@@ -1,5 +1,6 @@
 package com.threatlens.threatlens_backend.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
@@ -32,6 +33,7 @@ public class Threat {
     // Which log caused this threat?
     @ManyToOne
     @JoinColumn(name = "log_id")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Log log;
 
     public Threat() {

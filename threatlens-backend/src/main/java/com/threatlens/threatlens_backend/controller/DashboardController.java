@@ -79,4 +79,9 @@ public class DashboardController {
     public List<Threat> getRecentThreats() {
         return threatRepository.findTop10ByOrderByDetectedAtDesc();
     }
+
+    @GetMapping("/top-attacking-ips")
+    public List<Object[]> getTopAttackingIps() {
+        return threatRepository.getTopAttackingIps();
+    }
 }

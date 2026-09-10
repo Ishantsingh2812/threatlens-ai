@@ -1,37 +1,51 @@
 import {
   ResponsiveContainer,
-  AreaChart,
-  Area,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
 } from "recharts";
 
-function ThreatActivityChart({ data }) {
+function ThreatTypeChart({ data }) {
+
   return (
-    <div className="mt-6 rounded-xl border border-gray-800 bg-gray-900 p-6">
+    <div className="rounded-xl border border-gray-800 bg-gray-900 p-6">
 
       <div className="mb-6">
+
         <h2 className="text-lg font-semibold text-white">
-          Threat Activity
+          Threat Type Distribution
         </h2>
 
         <p className="mt-1 text-sm text-gray-500">
-          Threats detected during the last 24 hours
+          Number of threats detected by attack type
         </p>
+
       </div>
 
       <div className="h-80 w-full">
 
         {data.length === 0 ? (
+
           <div className="flex h-full items-center justify-center text-gray-500">
-            No threats detected in the last 24 hours
+            No threat data available
           </div>
+
         ) : (
+
           <ResponsiveContainer width="100%" height="100%">
 
-            <AreaChart data={data}>
+            <BarChart
+              data={data}
+              margin={{
+                top: 10,
+                right: 10,
+                left: 0,
+                bottom: 40,
+              }}
+            >
 
               <CartesianGrid
                 strokeDasharray="3 3"
@@ -39,9 +53,12 @@ function ThreatActivityChart({ data }) {
               />
 
               <XAxis
-                dataKey="time"
+                dataKey="threatType"
                 stroke="#94a3b8"
-                tick={{ fontSize: 12 }}
+                angle={-25}
+                textAnchor="end"
+                interval={0}
+                tick={{ fontSize: 11 }}
               />
 
               <YAxis
@@ -51,18 +68,16 @@ function ThreatActivityChart({ data }) {
 
               <Tooltip />
 
-              <Area
-                type="monotone"
-                dataKey="threats"
-                stroke="#ef4444"
+              <Bar
+                dataKey="count"
                 fill="#ef4444"
-                fillOpacity={0.15}
-                strokeWidth={3}
+                radius={[5, 5, 0, 0]}
               />
 
-            </AreaChart>
+            </BarChart>
 
           </ResponsiveContainer>
+
         )}
 
       </div>
@@ -71,4 +86,4 @@ function ThreatActivityChart({ data }) {
   );
 }
 
-export default ThreatActivityChart;
+export default ThreatTypeChart;
